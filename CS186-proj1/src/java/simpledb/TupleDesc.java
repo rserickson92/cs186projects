@@ -48,6 +48,7 @@ public class TupleDesc implements Serializable {
     private static final long serialVersionUID = 1L;
     private TDItem[] items;
     private int tuple_size;
+    private int hash_code;
     private void checkItemsBounds(int index) throws NoSuchElementException {
         if(index < 0 || index >= items.length) {
             throw NoSuchElementException("index out of bounds");
@@ -70,11 +71,17 @@ public class TupleDesc implements Serializable {
         assert typeAr.length >= 1 : "type array (typeAr) must have at least one entry";
         items = new TDItem[typeAr.length];
         tuple_size = 0;
+        hash_code = 0;
+        int field_hash;
         Type type;
         for(int i = 0; i < items.length; i++) {
             type = typeAr[i];
-            items[i] = new TDItem(type, fieldAr[i]);
+            field = fieldAr[i];
+            items[i] = new TDItem(type, field);
             tuple_size += type.getLen();
+            if(field != null) { field_hash = field.hashCode(); }
+            else { field_hash = 0; }
+            hash_code += (i+1)*(type.hashCode() + field.hashCode());
         }
     }
 
@@ -91,11 +98,13 @@ public class TupleDesc implements Serializable {
         assert typeAr.length >= 1 : "type array (typeAr) must have at least one entry";
         items = new TDItem[typeAr.length];
         tuple_size = 0;
+        hash_code = 0;
         Type type;
         for(int i = 0; i < items.length; i++) {
             type = typeAr[i];
             items[i] = new TDItem(typeAr[i], null);
             tuple_size += type.getLen();
+            hash_code += (i+1)*type.hashCode();
         }
     }
 
@@ -150,7 +159,7 @@ public class TupleDesc implements Serializable {
     public int fieldNameToIndex(String name) throws NoSuchElementException {
         // some code goes here
         String field_name;
-        for(int i = 0; i < items.length; i++) {
+        for(int i = 0; i < numFields(); i++) {
             field_name = getFieldName(i);
             if((field_name == null && name == null) || 
                (field_name.equals(name))){ 
@@ -181,7 +190,19 @@ public class TupleDesc implements Serializable {
      */
     public static TupleDesc merge(TupleDesc td1, TupleDesc td2) {
         // some code goes here
-        return null;
+        int len = td1.numFields() + td2.numFields();
+        Type[] types = new Type[len];
+        String[] fields = new String[len];
+        for(int i = 0; i < len; i++) {
+            if(i < td1.numFields()) {
+                types[i] = td1.getFieldType(i);
+                fields[i] = td1.getFieldType(i);
+            } else {
+                types[i] = td2.getFieldType(i);
+                fields[i] = td2.getFieldType(i);
+            }
+        }
+        return new TupleDesc(types, fields);
     }
 
     /**
@@ -195,13 +216,25 @@ public class TupleDesc implements Serializable {
      */
     public boolean equals(Object o) {
         // some code goes here
-        return false;
+        if(!(o instanceof TupleDesc) || 
+           getSize() != ((TupleDesc) o).getSize()) { 
+            return false; 
+        } else {
+            td = (TupleDesc) o;
+            for(int i = 0; i < numFields(); i++) {
+                if(!getFieldType(i).equals(td.getFieldType(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 
     public int hashCode() {
         // If you want to use TupleDesc as keys for HashMap, implement this so
         // that equal objects have equals hashCode() results
-        throw new UnsupportedOperationException("unimplemented");
+        // throw new UnsupportedOperationException("unimplemented");
+        return hash_code;
     }
 
     /**
@@ -213,6 +246,16 @@ public class TupleDesc implements Serializable {
      */
     public String toString() {
         // some code goes here
-        return "";
+        int len = numFields();
+        StringBuffer str = new StringBuffer(len);
+        String index, separator = ", ";
+        for(int i = 0; i < len; i++) {
+            index = "[" + i + "]";
+            str.append(getFieldType(i));
+            str.append(index);
+            str.append("(" + getFieldName(i) + index + ")");
+            if(i != len-1) { str.append(separator); }
+        }
+        return str.toString();
     }
 }
