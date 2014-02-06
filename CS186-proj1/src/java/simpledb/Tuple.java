@@ -3,6 +3,7 @@ package simpledb;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * Tuple maintains information about the contents of a tuple. Tuples have a
@@ -12,9 +13,9 @@ import java.util.Iterator;
 public class Tuple implements Serializable {
 
     private static final long serialVersionUID = 1L;
-    private schema;
-    private rid;
-    private Field[] fields;
+    private TupleDesc schema;
+    private RecordId rid;
+    private List<Field> fields;
 
     /**
      * Create a new tuple with the specified schema (type).
@@ -27,10 +28,11 @@ public class Tuple implements Serializable {
         // some code goes here
         schema = td;
         rid = null;
-        fields = new Field[schema.numFields()];
-        for(int i = 0; i < fields.length; i++) {
-            fields[i] = null;
+        Field[] temp_fields = new Field[schema.numFields()];
+        for(int i = 0; i < temp_fields.length; i++) {
+            temp_fields[i] = null;
         }
+        fields = Arrays.asList(temp_fields);
     }
 
     /**
@@ -71,7 +73,7 @@ public class Tuple implements Serializable {
      */
     public void setField(int i, Field f) {
         // some code goes here
-        fields[i] = f;
+        fields.set(i, f);
     }
 
     /**
@@ -82,7 +84,7 @@ public class Tuple implements Serializable {
      */
     public Field getField(int i) {
         // some code goes here
-        return fields[i];
+        return fields.get(i);
     }
 
     /**
@@ -96,7 +98,7 @@ public class Tuple implements Serializable {
     public String toString() {
         // some code goes here
         // throw new UnsupportedOperationException("Implement this");
-        StringBuffer str = new StringBuffer(fields.length);
+        StringBuffer str = new StringBuffer(fields.size());
         for(Field f : fields) {
             str.append(f + " ");
         }
