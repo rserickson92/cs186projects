@@ -54,6 +54,12 @@ public class TupleDesc implements Serializable {
             throw NoSuchElementException("index out of bounds");
         }
     }
+    private void hasAtLeastOneItem(Object[] array) {
+        if(array.length <= 1) { 
+	    throw new RuntimeException("array " + array + 
+	                               "must have at least one entry");
+	}
+    }
 
     /**
      * Create a new TupleDesc with typeAr.length fields with fields of the
@@ -68,7 +74,7 @@ public class TupleDesc implements Serializable {
      */
     public TupleDesc(Type[] typeAr, String[] fieldAr) {
         // some code goes here
-        assert typeAr.length >= 1 : "type array (typeAr) must have at least one entry";
+	hasAtLeastOneItem(typeAr);
         items = new TDItem[typeAr.length];
         tuple_size = 0;
         hash_code = 0;
@@ -81,7 +87,7 @@ public class TupleDesc implements Serializable {
             tuple_size += type.getLen();
             if(field != null) { field_hash = field.hashCode(); }
             else { field_hash = 0; }
-            hash_code += (i+1)*(type.hashCode() + field.hashCode());
+            hash_code += (i+1)*(type.hashCode() + field_hash);
         }
     }
 
@@ -95,7 +101,7 @@ public class TupleDesc implements Serializable {
      */
     public TupleDesc(Type[] typeAr) {
         // some code goes here
-        assert typeAr.length >= 1 : "type array (typeAr) must have at least one entry";
+	hasAtLeastOneItem(typeAr);
         items = new TDItem[typeAr.length];
         tuple_size = 0;
         hash_code = 0;
@@ -234,7 +240,7 @@ public class TupleDesc implements Serializable {
         // If you want to use TupleDesc as keys for HashMap, implement this so
         // that equal objects have equals hashCode() results
         // throw new UnsupportedOperationException("unimplemented");
-        return hash_code;
+        return hash_code; //initialized in constructor since TupleDescs are immutable
     }
 
     /**
