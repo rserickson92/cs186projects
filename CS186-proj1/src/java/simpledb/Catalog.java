@@ -16,12 +16,28 @@ import java.util.*;
 
 public class Catalog {
 
+    public static class CatalogItem {
+        public DbFile file;
+        public String primary_key;
+        public String name;
+
+        public CatalogItem(DbFile file, String primary_key, String name) {
+            this.file = file;
+            this.primary_key = primary_key;
+            this.name = name;
+        }
+    }
+
+    private HashMap<Integer, CatalogItem> catalog;
+    private HashMap<String, Integer> table_ids;
     /**
      * Constructor.
      * Creates a new, empty catalog.
      */
     public Catalog() {
         // some code goes here
+        catalog = new HashMap<Integer, CatalogItem>();
+        table_ids = new HashMap<String, Integer>();
     }
 
     /**
@@ -35,6 +51,9 @@ public class Catalog {
      */
     public void addTable(DbFile file, String name, String pkeyField) {
         // some code goes here
+        Integer id = new Integer(file.getId());
+        catalog.put(id, new CatalogItem(file, pkeyField, name));
+        table_ids.put(name, id);
     }
 
     public void addTable(DbFile file, String name) {
@@ -58,7 +77,11 @@ public class Catalog {
      */
     public int getTableId(String name) throws NoSuchElementException {
         // some code goes here
-        return 0;
+        Integer id = table_ids.get(name);
+        if(id == null) {
+            throw new NoSuchElementException("Unknown table name : " + name);
+        }
+        return id.intValue();
     }
 
     /**
@@ -69,7 +92,7 @@ public class Catalog {
      */
     public TupleDesc getTupleDesc(int tableid) throws NoSuchElementException {
         // some code goes here
-        return null;
+        return getDbFile(tableid).getTupleDesc();
     }
 
     /**
@@ -80,27 +103,33 @@ public class Catalog {
      */
     public DbFile getDbFile(int tableid) throws NoSuchElementException {
         // some code goes here
-        return null;
+        CatalogItem item = catalog.get(new Integer(tableid));
+        if(item == null) { 
+            throw new NoSuchElementException("Unknown table identifier: " + tableid);
+        }
+        return item.file;
     }
 
     public String getPrimaryKey(int tableid) {
         // some code goes here
-        return null;
+        return catalog.get(new Integer(tableid)).primary_key;
     }
 
     public Iterator<Integer> tableIdIterator() {
         // some code goes here
-        return null;
+        return catalog.keySet().iterator();
     }
 
     public String getTableName(int id) {
         // some code goes here
-        return null;
+        return catalog.get(new Integer(id)).name;
     }
     
     /** Delete all tables from the catalog */
     public void clear() {
         // some code goes here
+        catalog.clear();
+        table_ids.clear();
     }
     
     /**
