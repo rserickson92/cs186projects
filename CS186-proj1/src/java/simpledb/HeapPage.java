@@ -66,8 +66,8 @@ public class HeapPage implements Page {
     */
     private int getNumTuples() {        
         // some code goes here
-        return 0;
-
+	return Math.floor((BufferPool.PAGE_SIZE * 8.0) /
+	                  (td.getSize() * 8 + 1));
     }
 
     /**
@@ -77,7 +77,7 @@ public class HeapPage implements Page {
     private int getHeaderSize() {        
         
         // some code goes here
-        return 0;
+        return Math.ceil(getNumTuples() / 8);
                  
     }
     
@@ -103,7 +103,7 @@ public class HeapPage implements Page {
      */
     public HeapPageId getId() {
     // some code goes here
-    throw new UnsupportedOperationException("implement this");
+      return pid;
     }
 
     /**
@@ -269,11 +269,28 @@ public class HeapPage implements Page {
     }
 
     /**
+     * Helper to get a single bit from header
+     */
+    private byte getHeaderBit(int i) {
+	return header[i / 8] >> (i % 8);
+    }
+   
+    /**
      * Returns the number of empty slots on this page.
+     *
+     * TODO: modify to update when bits are set
+     *       to improve efficiency
      */
     public int getNumEmptySlots() {
         // some code goes here
-        return 0;
+	byte bit;
+	int empty_slots = 0;
+	for(int i = 0; i < numSlots; i++) {
+	    if(getHeaderBit(i) == 0) { 
+		empty_slots++; 
+	    }
+	}
+	return empty_slots;
     }
 
     /**
@@ -281,7 +298,7 @@ public class HeapPage implements Page {
      */
     public boolean isSlotUsed(int i) {
         // some code goes here
-        return false;
+	return getHeaderBit(i) == 1;
     }
 
     /**
@@ -298,8 +315,7 @@ public class HeapPage implements Page {
      */
     public Iterator<Tuple> iterator() {
         // some code goes here
-        return null;
+        return new HeapPageIterator<Tuple>(this);
     }
 
 }
-
