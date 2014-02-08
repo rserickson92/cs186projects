@@ -14,8 +14,8 @@ public class HeapPageId implements PageId {
      */
     public HeapPageId(int tableId, int pgNo) {
         // some code goes here
-	tid = tableId;
-	pg_no = pgNo;
+        tid = tableId;
+        pg_no = pgNo;
     }
 
     /** @return the table associated with this PageId */
@@ -41,8 +41,7 @@ public class HeapPageId implements PageId {
      */
     public int hashCode() {
         // some code goes here
-	return Integer.parseInt(Integer.toString(tid) + 
-	                        Integer.toString(pg_no));
+        return (tid << 16) + pg_no;
     }
 
     /**
@@ -54,12 +53,12 @@ public class HeapPageId implements PageId {
      */
     public boolean equals(Object o) {
         // some code goes here
-	if(!(o instanceof PageId)) {
-	    return false;
-	}
-	PageId pid = (PageId) o;
-	return (pid.getTableId() == getTableId()) && 
-	       (pid.pageNumber() == pageNumber());
+        if(!(o instanceof PageId)) {
+            return false;
+        }
+        PageId pid = (PageId) o;
+        return (pid.getTableId() == getTableId()) && 
+            (pid.pageNumber() == pageNumber());
     }
 
     /**

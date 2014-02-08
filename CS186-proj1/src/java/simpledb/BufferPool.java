@@ -52,17 +52,17 @@ public class BufferPool {
     public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
         // some code goes here
-	if(buffer_pool.containsKey(pid)) {
-	    return buffer_pool.get(pid);
-	} else if(buffer_pool.size() < max_pages) {
-	    Catalog gc = Database.getCatalog();
-	    int tid = pid.getTableId();
-	    DbFile file = gc.getDbFile(tid);
-	    buffer_pool.put(pid, file.readPage(pid));
-	    return buffer_pool.get(pid);
-	} else {
-	    throw new DbException("buffer pool is full");
-	}
+        if(buffer_pool.containsKey(pid)) {
+            return buffer_pool.get(pid);
+        } else if(buffer_pool.size() < max_pages) {
+            Catalog gc = Database.getCatalog();
+            int table_id = pid.getTableId();
+            DbFile file = gc.getDbFile(table_id);
+            buffer_pool.put(pid, file.readPage(pid));
+            return buffer_pool.get(pid);
+        } else {
+            throw new DbException("buffer pool is full");
+        }
     }
 
     /**

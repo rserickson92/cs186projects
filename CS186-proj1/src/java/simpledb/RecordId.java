@@ -23,8 +23,8 @@ public class RecordId implements Serializable {
      */
     public RecordId(PageId pid, int tupleno) {
         // some code goes here
-	this.pid = pid;
-	tuple_no = tupleno;
+        this.pid = pid;
+        tuple_no = tupleno;
     }
 
     /**
@@ -50,15 +50,15 @@ public class RecordId implements Serializable {
      * @return True if this and o represent the same tuple
      */
     @Override
-    public boolean equals(Object o) {
-        // some code goes here
-	if(!(o instanceof RecordId)) {
-	    return false;
-	}
-	rid = (RecordId) o;
-	return (rid.tupleno() == tupleno()) &&
-	       (rid.getPageId() == getPageId());
-    }
+        public boolean equals(Object o) {
+            // some code goes here
+            if(!(o instanceof RecordId)) {
+                return false;
+            }
+            RecordId rid = (RecordId) o;
+            return (rid.tupleno() == tupleno()) &&
+                   (rid.getPageId().equals(getPageId()));
+        }
 
     /**
      * You should implement the hashCode() so that two equal RecordId instances
@@ -67,10 +67,9 @@ public class RecordId implements Serializable {
      * @return An int that is the same for equal RecordId objects.
      */
     @Override
-    public int hashCode() {
-        // some code goes here
-	return Integer.parseInt(Integer.toString(pid) + 
-	                        Integer.toString(tuple_no));
-    }
+        public int hashCode() {
+            // some code goes here
+            return (pid.getTableId() << 16) + tuple_no;
+        }
 
 }
