@@ -1,0 +1,37 @@
+Design decisions:
+I used snake-case variable names and camel case function/class names.
+Due to recommendations I received on Piazza, I threw unchecked 
+exceptions whenever something important needed to be enforced and
+there was no throws clause (e.g. RuntimeExceptions in TupleDesc.java).
+Whenever possible and convenient, I did as much computation as 
+possible upon object creation to speed up other functions (e.g.
+created alias-prefixed fields in SeqScan.java during the constructor
+and whenever the alias was changed). In Catalog.java, I created an
+auxillary class, CatalogItem, to take advantage of the fact that all
+three objects that make up a CatalogItem can be accessed with a table
+id. When working with the various iterators, I did one of two things.
+I either made use of the Java API to access pre-defined iterators
+(i.e. in TupleDesc/Tuple and Catalog) or defined my own iterators in
+separate files (i.e. HeapPageIterator.java, HeapFileIterator.java).
+Lastly, when catching exceptions, I would either throw a different
+one to help me debug or print the stack trace.
+
+API changes: 
+I did not modify the API.
+
+Missing/incomplete elements: 
+My code seems complete and correct to the best of my knowledge, due
+to procrastination I did not have time to test it as much as I would
+have liked. However, some parts of it will most likely only work with 
+HeapFiles. Introducing different kinds of files, pages, etc. may require 
+me to come back and modify some of this code so it will generalize better.
+
+Time spent: 
+I estimate that I spent around 20 hours on this project. I found
+implementing open/close on my iterators somewhat confusing because I
+did not realize that the internal pointer to whatever I was iterating
+through had to be at the same spot if I closed and reopened the
+iterator. In fact, I had to dive into the test code to see why open
+and close were causing problems. Though I spent a lot of time on this,
+it was mostly due to having to re-learn Java and subpar time management
+on my part.

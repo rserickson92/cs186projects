@@ -73,7 +73,6 @@ public class HeapFile implements DbFile {
             raf = new RandomAccessFile(getFile(), "r");
         } catch(FileNotFoundException e) {
             e.printStackTrace();
-            System.exit(1);
         }
 
         byte[] data = new byte[BufferPool.PAGE_SIZE];

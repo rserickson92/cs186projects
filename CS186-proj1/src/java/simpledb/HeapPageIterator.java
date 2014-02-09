@@ -3,6 +3,9 @@ package simpledb;
 import java.util.*;
 
 class HeapPageIterator implements Iterator<Tuple> {
+    /** An iterator specifically for iterating through Tuples on
+     *  a heap page.
+     */
 
     private HeapPage page;
     private int slot_i;
@@ -28,11 +31,12 @@ class HeapPageIterator implements Iterator<Tuple> {
         while(!page.isSlotUsed(slot_i)) {
             slot_i++;
         }
-        return page.tuples[slot_i];
+        int i = slot_i;
+        slot_i++;
+        return page.tuples[i];
     }
 
     public void remove() {
         throw new UnsupportedOperationException();
     }
 }
-
