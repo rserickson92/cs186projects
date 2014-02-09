@@ -26,8 +26,8 @@ public class HeapFile implements DbFile {
      */
     public HeapFile(File f, TupleDesc td) {
         // some code goes here
-	file = f;
-	this.td = td;
+        file = f;
+        this.td = td;
     }
 
     /**
@@ -51,7 +51,7 @@ public class HeapFile implements DbFile {
      */
     public int getId() {
         // some code goes here
-	return getFile().getAbsoluteFile().hashCode();
+        return getFile().getAbsoluteFile().hashCode();
     }
 
     /**
@@ -61,16 +61,30 @@ public class HeapFile implements DbFile {
      */
     public TupleDesc getTupleDesc() {
         // some code goes here
-	return td;
+        return td;
     }
 
     // see DbFile.java for javadocs
     public Page readPage(PageId pid) {
         // some code goes here
-	RandomAccessFile raf = new RandomAccessFile(getFile(), "r");
-	byte[] data = new byte[BufferPool.PAGE_SIZE];
-	raf.readFully(data, pid.pageNumber(), BufferPool.PAGE_SIZE);
-	return new HeapPage(pid, data);
+        RandomAccessFile raf = null;
+        Page returnme = null;
+        try { 
+            raf = new RandomAccessFile(getFile(), "r");
+        } catch(FileNotFoundException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+        byte[] data = new byte[BufferPool.PAGE_SIZE];
+        try {
+            raf.readFully(data, BufferPool.PAGE_SIZE * pid.pageNumber(), data.length);
+            returnme = new HeapPage((HeapPageId) pid, data);
+        } catch(EOFException eofe) {
+            eofe.printStackTrace();
+        } catch(IOException ioe) {
+            ioe.printStackTrace();
+        } 
+        return returnme;
     }
 
     // see DbFile.java for javadocs
@@ -89,24 +103,24 @@ public class HeapFile implements DbFile {
 
     // see DbFile.java for javadocs
     public ArrayList<Page> insertTuple(TransactionId tid, Tuple t)
-            throws DbException, IOException, TransactionAbortedException {
-        // some code goes here
-        return null;
-        // not necessary for proj1
-    }
+        throws DbException, IOException, TransactionAbortedException {
+            // some code goes here
+            return null;
+            // not necessary for proj1
+        }
 
     // see DbFile.java for javadocs
     public Page deleteTuple(TransactionId tid, Tuple t) throws DbException,
-            TransactionAbortedException {
-        // some code goes here
-        return null;
-        // not necessary for proj1
-    }
+           TransactionAbortedException {
+               // some code goes here
+               return null;
+               // not necessary for proj1
+           }
 
     // see DbFile.java for javadocs
     public DbFileIterator iterator(TransactionId tid) {
         // some code goes here
-	return new HeapFileIterator(this, tid);
+        return new HeapFileIterator(this, tid);
     }
 }
 

@@ -17,8 +17,8 @@ public class BufferPool {
     public static final int PAGE_SIZE = 4096;
 
     /** Default number of pages passed to the constructor. This is used by
-    other classes. BufferPool should use the numPages argument to the
-    constructor instead. */
+      other classes. BufferPool should use the numPages argument to the
+      constructor instead. */
     public static final int DEFAULT_PAGES = 50;
 
     private HashMap<PageId, Page> buffer_pool;
@@ -31,7 +31,7 @@ public class BufferPool {
     public BufferPool(int numPages) {
         // some code goes here
         max_pages = numPages;
-	buffer_pool = new HashMap<PageId, Page>(max_pages);
+        buffer_pool = new HashMap<PageId, Page>(max_pages);
     }
 
     /**
@@ -51,19 +51,19 @@ public class BufferPool {
      */
     public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
-        // some code goes here
-        if(buffer_pool.containsKey(pid)) {
-            return buffer_pool.get(pid);
-        } else if(buffer_pool.size() < max_pages) {
-            Catalog gc = Database.getCatalog();
-            int table_id = pid.getTableId();
-            DbFile file = gc.getDbFile(table_id);
-            buffer_pool.put(pid, file.readPage(pid));
-            return buffer_pool.get(pid);
-        } else {
-            throw new DbException("buffer pool is full");
+            // some code goes here
+            if(buffer_pool.containsKey(pid)) {
+                return buffer_pool.get(pid);
+            } else if(buffer_pool.size() < max_pages) {
+                Catalog gc = Database.getCatalog();
+                int table_id = pid.getTableId();
+                DbFile file = gc.getDbFile(table_id);
+                buffer_pool.put(pid, file.readPage(pid));
+                return buffer_pool.get(pid);
+            } else {
+                throw new DbException("buffer pool is full");
+            }
         }
-    }
 
     /**
      * Releases the lock on a page.
@@ -105,9 +105,9 @@ public class BufferPool {
      */
     public void transactionComplete(TransactionId tid, boolean commit)
         throws IOException {
-        // some code goes here
-        // not necessary for proj1
-    }
+            // some code goes here
+            // not necessary for proj1
+        }
 
     /**
      * Add a tuple to the specified table behalf of transaction tid.  Will
@@ -125,9 +125,9 @@ public class BufferPool {
      */
     public void insertTuple(TransactionId tid, int tableId, Tuple t)
         throws DbException, IOException, TransactionAbortedException {
-        // some code goes here
-        // not necessary for proj1
-    }
+            // some code goes here
+            // not necessary for proj1
+        }
 
     /**
      * Remove the specified tuple from the buffer pool.
@@ -144,9 +144,9 @@ public class BufferPool {
      */
     public  void deleteTuple(TransactionId tid, Tuple t)
         throws DbException, TransactionAbortedException {
-        // some code goes here
-        // not necessary for proj1
-    }
+            // some code goes here
+            // not necessary for proj1
+        }
 
     /**
      * Flush all dirty pages to disk.
@@ -160,13 +160,13 @@ public class BufferPool {
     }
 
     /** Remove the specific page id from the buffer pool.
-        Needed by the recovery manager to ensure that the
-        buffer pool doesn't keep a rolled back page in its
-        cache.
-    */
+      Needed by the recovery manager to ensure that the
+      buffer pool doesn't keep a rolled back page in its
+      cache.
+     */
     public synchronized void discardPage(PageId pid) {
         // some code goes here
-	// not necessary for proj1
+        // not necessary for proj1
     }
 
     /**
