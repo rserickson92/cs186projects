@@ -51,7 +51,7 @@ public class HeapFile implements DbFile {
      */
     public int getId() {
         // some code goes here
-	return file.getAbsoluteFile().hashCode();
+	return getFile().getAbsoluteFile().hashCode();
     }
 
     /**
@@ -67,7 +67,10 @@ public class HeapFile implements DbFile {
     // see DbFile.java for javadocs
     public Page readPage(PageId pid) {
         // some code goes here
-        return null;
+	RandomAccessFile raf = new RandomAccessFile(getFile(), "r");
+	byte[] data = new byte[BufferPool.PAGE_SIZE];
+	raf.readFully(data, pid.pageNumber(), BufferPool.PAGE_SIZE);
+	return new HeapPage(pid, data);
     }
 
     // see DbFile.java for javadocs
@@ -81,7 +84,7 @@ public class HeapFile implements DbFile {
      */
     public int numPages() {
         // some code goes here
-        return 0;
+        return (int) file.length() / BufferPool.PAGE_SIZE;
     }
 
     // see DbFile.java for javadocs
@@ -103,8 +106,7 @@ public class HeapFile implements DbFile {
     // see DbFile.java for javadocs
     public DbFileIterator iterator(TransactionId tid) {
         // some code goes here
-        return null;
+	return new HeapFileIterator(this, tid);
     }
-
 }
 
