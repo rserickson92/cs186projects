@@ -75,9 +75,14 @@ public class HeapFile implements DbFile {
             e.printStackTrace();
             System.exit(1);
         }
+
         byte[] data = new byte[BufferPool.PAGE_SIZE];
+        long offset = (long) BufferPool.PAGE_SIZE * pid.pageNumber();
         try {
-            raf.readFully(data, BufferPool.PAGE_SIZE * pid.pageNumber(), data.length);
+            raf.seek(offset);
+            for(int i = 0; i < data.length; i++) {
+                data[i] = raf.readByte();
+            }
             returnme = new HeapPage((HeapPageId) pid, data);
         } catch(EOFException eofe) {
             eofe.printStackTrace();

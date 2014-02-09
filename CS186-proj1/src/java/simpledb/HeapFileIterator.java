@@ -21,17 +21,20 @@ public class HeapFileIterator implements DbFileIterator {
         page_no = 0;
     }
 
-    private void setPageIterator() {
+    private void setPageIterator() throws DbException {
         if(i_pos != null) {
             i = i_pos;
             return;
         }
+        //System.err.println(page_no);
         PageId pid = new HeapPageId(file.getId(), page_no);
         HeapPage page = null;
         try {
             page = (HeapPage) buffer_pool.getPage(tid, pid, Permissions.READ_ONLY);
         } catch(Exception e) {
+            System.err.println(e);
             e.printStackTrace();
+            throw new DbException("error accessing page in heap file iterator");
         }
         i = page.iterator();
     }
@@ -51,13 +54,15 @@ public class HeapFileIterator implements DbFileIterator {
                 throw new NoSuchElementException("iterator is not open");
             } else if(i.hasNext()) {
                 return i.next();
-            } else if(page_no < file.numPages()-1) { //get next page
+            } 
+
+            //keep going if entire page is blank
+            while(page_no < file.numPages()-1) {
                 page_no++;
                 setPageIterator();
-                return i.next();
-            } else {
-                throw new NoSuchElementException("no more tuples in file");
+                if(i.hasNext()) { return i.next(); }
             }
+            throw new NoSuchElementException("no more tuples in file");
         }
     public void rewind()
         throws DbException, TransactionAbortedException {

@@ -77,7 +77,7 @@ public class HeapPage implements Page {
     private int getHeaderSize() {        
 
         // some code goes here
-        return (int) Math.ceil(getNumTuples() / 8);
+        return (int) Math.ceil(getNumTuples() / 8.0);
 
     }
 
@@ -283,7 +283,6 @@ public class HeapPage implements Page {
      */
     public int getNumEmptySlots() {
         // some code goes here
-        byte bit;
         int empty_slots = 0;
         for(int i = 0; i < numSlots; i++) {
             if(getHeaderBit(i) == 0) { 
