@@ -17,6 +17,7 @@ public class HeapFile implements DbFile {
 
     private File file;
     private TupleDesc td;
+    private RandomAccessFile raf;
     /**
      * Constructs a heap file backed by the specified file.
      * 
@@ -28,6 +29,11 @@ public class HeapFile implements DbFile {
         // some code goes here
         file = f;
         this.td = td;
+        try {
+            raf = new RandomAccessFile(file, "rw");
+        } catch(IOException e) {
+            throw new RuntimeException("Unable to create random access file");
+        }
     }
 
     /**
@@ -67,15 +73,12 @@ public class HeapFile implements DbFile {
     // see DbFile.java for javadocs
     public Page readPage(PageId pid) {
         // some code goes here
-        RandomAccessFile raf = null;
-        Page returnme = null;
-        try { 
-            raf = new RandomAccessFile(getFile(), "r");
-        } catch(FileNotFoundException e) {
-            e.printStackTrace();
+        if(pid.pageNumber() >= numPages()) {
+            throw new IllegalArgumentException("page not in file");
         }
+        Page returnme = null;
 
-        byte[] data = new byte[BufferPool.PAGE_SIZE];
+        byte[] data = HeapPage.createEmptyPageData();
         long offset = (long) BufferPool.PAGE_SIZE * pid.pageNumber();
         try {
             raf.seek(offset);
@@ -95,13 +98,11 @@ public class HeapFile implements DbFile {
     public void writePage(Page page) throws IOException {
         // some code goes here
         long offset = page.getId().pageNumber() * BufferPool.PAGE_SIZE;
-        RandomAccessFile raf = null;
         byte[] data = page.getPageData();
         try {
-            raf = new RandomAccessFile(getFile(), "rw");
             raf.seek(offset);
             for(int i = 0; i < data.length; i++) {
-                raf.writeByte(i);
+                raf.writeByte(data[i]);
             }
         } catch(FileNotFoundException e) {
             e.printStackTrace();
@@ -113,7 +114,11 @@ public class HeapFile implements DbFile {
      */
     public int numPages() {
         // some code goes here
-        return (int) file.length() / BufferPool.PAGE_SIZE;
+        try {
+            return (int) raf.length() / BufferPool.PAGE_SIZE;
+        } catch(IOException e) {
+            throw new RuntimeException("error accessing file length");
+        }
     }
 
     // see DbFile.java for javadocs
@@ -121,14 +126,15 @@ public class HeapFile implements DbFile {
         throws DbException, IOException, TransactionAbortedException {
             // some code goes here
             BufferPool bp = Database.getBufferPool();
-            int id = getId(), i;
+            int id = getId(), i, slots;
             ArrayList<Page> retlist = new ArrayList<Page>();
             PageId pid = null;
             HeapPage p = null;
             for(i = 0; i < numPages(); i++) {
                 pid = new HeapPageId(id, i);
                 p = (HeapPage) bp.getPage(tid, pid, Permissions.READ_WRITE);
-                if(p.getNumEmptySlots() > 0) {
+                slots = p.getNumEmptySlots();
+                if(slots > 0) {
                     p.insertTuple(t);
                     retlist.add(p);
                     return retlist;
@@ -137,20 +143,8 @@ public class HeapFile implements DbFile {
 
             //create new page and add tuple to it
             pid = new HeapPageId(id, i);
-            RandomAccessFile raf = null;
-            long offset = pid.pageNumber() * BufferPool.PAGE_SIZE;
-            byte[] data = new byte[BufferPool.PAGE_SIZE];
-            try {
-                raf = new RandomAccessFile(getFile(), "rw");
-                raf.setLength(raf.length() + BufferPool.PAGE_SIZE);
-                raf.seek(offset);
-                for(int j = 0; j < data.length; j++) {
-                    data[j] = raf.readByte();
-                }
-            } catch(FileNotFoundException e) {
-                e.printStackTrace();
-            }
-            p = new HeapPage((HeapPageId) pid, data);
+            raf.setLength(raf.length() + BufferPool.PAGE_SIZE);
+            p = (HeapPage) bp.getPage(tid, pid, Permissions.READ_WRITE);
             p.insertTuple(t);
             retlist.add(p);
             return retlist;

@@ -306,12 +306,11 @@ public class HeapPage implements Page {
     }
 
     private void setHeaderBit(int i, byte value) {
-        //System.err.println(value);
-        //System.err.println("header byte before: "+Integer.toBinaryString(header[i/8]));
+        //System.err.println("setting bit "+i+" to "+value+": ");
         byte mask = (byte) ~(1 << (i%8)),
              setting_bit = ((byte)(value << (i%8)));
         header[i/8] = (byte) ((header[i/8] & mask) | setting_bit);
-        //System.err.println("header byte after: "+Integer.toBinaryString(header[i/8]));
+        //System.err.println(Arrays.toString(header));
     }
 
     /**
@@ -324,7 +323,7 @@ public class HeapPage implements Page {
         // some code goes here
         int empty_slots = 0;
         for(int i = 0; i < numSlots; i++) {
-            if(getHeaderBit(i) == 0) { 
+            if(!isSlotUsed(i)) { 
                 empty_slots++; 
             }
         }
