@@ -31,7 +31,7 @@ public class HeapFile implements DbFile {
         this.td = td;
         try {
             raf = new RandomAccessFile(file, "rw");
-        } catch(IOException e) {
+        } catch(FileNotFoundException e) {
             throw new RuntimeException("Unable to create random access file");
         }
     }

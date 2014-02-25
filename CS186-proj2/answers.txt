@@ -1,37 +1,37 @@
 Design decisions:
-I used snake-case variable names and camel case function/class names.
-Due to recommendations I received on Piazza, I threw unchecked 
-exceptions whenever something important needed to be enforced and
-there was no throws clause (e.g. RuntimeExceptions in TupleDesc.java).
-Whenever possible and convenient, I did as much computation as 
-possible upon object creation to speed up other functions (e.g.
-created alias-prefixed fields in SeqScan.java during the constructor
-and whenever the alias was changed). In Catalog.java, I created an
-auxillary class, CatalogItem, to take advantage of the fact that all
-three objects that make up a CatalogItem can be accessed with a table
-id. When working with the various iterators, I did one of two things.
-I either made use of the Java API to access pre-defined iterators
-(i.e. in TupleDesc/Tuple and Catalog) or defined my own iterators in
-separate files (i.e. HeapPageIterator.java, HeapFileIterator.java).
-Lastly, when catching exceptions, I would either throw a different
-one to help me debug or print the stack trace.
+-I stuck with a naive nested loop join in Join.
+-My implementations of IntegerAggregator and StringAggregator are almost the 
+ same, except StringAggregator can only do counting. This involved a lot of 
+ code repitition, but I did not create a general Aggregator class to fix this 
+ due to lack of time.
+-I chose to keep my original implementation of getNumEmptySlots() in HeapPage
+ because I did not want to risk introducing any more bugs. It iterates through
+ the entire header each time it is called. Additionally, I inserted tuples in a
+ first-fit manner in both HeapPage and HeapFile.
+-In HeapFile, I moved random access file creation into the constructor for
+ (marginal) performance benefits and so that numPages() could work properly.
+-I implemented the LRU page eviction policy by treating an ArrayList like a 
+ queue. I did this by appending PageIds to the list whenever new pages were
+ read into the buffer pool and removing from the front whenever an eviction
+ occurred. Additionally, if there was a "cache hit" in the buffer pool, I 
+ removed the respective PageId from the list and re-insert it at the back.
 
 API changes: 
-I did not modify the API.
+-I did not modify the API.
 
 Missing/incomplete elements: 
-My code seems complete and correct to the best of my knowledge, due
-to procrastination I did not have time to test it as much as I would
-have liked. However, some parts of it will most likely only work with 
-HeapFiles. Introducing different kinds of files, pages, etc. may require 
-me to come back and modify some of this code so it will generalize better.
+-In general, I feel like the performance of this whole thing needs improvement.
+ A significant factor in this project's slowness is the nested loop join;
+ however, there are several other areas I feel are naively implemented
+ (e.g. getNumEmptySlots()).
+-I feel I did a better job testing my project this time, but there came a point
+ where I had to choose between using more slip hours and finding subtle bugs.
 
 Time spent: 
-I estimate that I spent around 20 hours on this project. I found
-implementing open/close on my iterators somewhat confusing because I
-did not realize that the internal pointer to whatever I was iterating
-through had to be at the same spot if I closed and reopened the
-iterator. In fact, I had to dive into the test code to see why open
-and close were causing problems. Though I spent a lot of time on this,
-it was mostly due to having to re-learn Java and subpar time management
-on my part.
+-I estimate I spent around 25 hours on this project.
+-I found the nested loop join somewhat confusing because I took the
+ description too literally and had two while loops during my first attempt
+ to implement it.
+-One of my biggest challenges was dealing with bugs that propagated up from
+ the previous project. Luckily there (seemingly) weren't many, but it did 
+ cost me a few precious hours.

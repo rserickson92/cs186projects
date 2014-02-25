@@ -63,12 +63,13 @@ public class StringAggregator implements Aggregator {
         TupleDesc td;
         Tuple t = null;
         ArrayList<Tuple> tuples = new ArrayList<Tuple>();
+        String aggregateName = what + "aggregateVal"; 
         if(gbfield == NO_GROUPING) {
             td = new TupleDesc(new Type[]{Type.INT_TYPE},
-                               new String[]{"SaggregateVal"});
+                               new String[]{aggregateName});
         } else {
             td = new TupleDesc(new Type[]{gbfieldtype, Type.INT_TYPE},
-                               new String[]{"groupVal", "SaggregateVal"});
+                               new String[]{"groupVal", aggregateName});
         }
 
         for(Field f : aggregate.keySet()) {
