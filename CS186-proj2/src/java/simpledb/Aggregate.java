@@ -131,10 +131,6 @@ public class Aggregate extends Operator {
     protected Tuple fetchNext() throws TransactionAbortedException, DbException {
         // some code goes here
         Tuple t = i.hasNext() ? i.next() : null;
-        //if(aop==Aggregator.Op.COUNT) {
-        //    System.err.println(t);
-        //    System.err.println(t.getTupleDesc());
-        //}
         return t;
     }
 

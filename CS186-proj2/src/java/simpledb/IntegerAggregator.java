@@ -91,12 +91,13 @@ public class IntegerAggregator implements Aggregator {
         int i;
         Field ifield;
         ArrayList<Tuple> tuples = new ArrayList<Tuple>();
+        String aggregateName = what + "aggregateVal"; 
         if(gbfield == NO_GROUPING) {
             td = new TupleDesc(new Type[]{Type.INT_TYPE},
-                               new String[]{"aggregateVal"});
+                               new String[]{aggregateName});
         } else {
             td = new TupleDesc(new Type[]{gbfieldtype, Type.INT_TYPE},
-                               new String[]{"groupVal", "aggregateVal"});
+                               new String[]{"groupVal", aggregateName});
         }
 
         for(Field f : aggregate.keySet()) {
@@ -113,10 +114,8 @@ public class IntegerAggregator implements Aggregator {
                 t.setField(0, f);
                 t.setField(1, ifield);
             }
-            //if(what == Op.COUNT) System.err.println(what + " " + t);
             tuples.add(t);
         }
-        //if(what == Op.COUNT) System.err.println(what + " " + tuples);
         return new TupleIterator(td, tuples);
     }
 

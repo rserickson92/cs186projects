@@ -23,6 +23,7 @@ public class BufferPool {
 
     private HashMap<PageId, Page> buffer_pool;
     private int max_pages;
+    private ArrayList<PageId> lru_queue;
     /**
      * Creates a BufferPool that caches up to numPages pages.
      *
@@ -32,6 +33,7 @@ public class BufferPool {
         // some code goes here
         max_pages = numPages;
         buffer_pool = new HashMap<PageId, Page>(max_pages);
+        lru_queue = new ArrayList<PageId>(max_pages);
     }
 
     /**
@@ -53,16 +55,22 @@ public class BufferPool {
         throws TransactionAbortedException, DbException {
             // some code goes here
             if(buffer_pool.containsKey(pid)) {
+
+                //move this (MRU) page to back of queue
+                lru_queue.remove(lru_queue.indexOf(pid));
+                lru_queue.add(pid);
+
                 return buffer_pool.get(pid);
-            } else if(buffer_pool.size() < max_pages) {
-                Catalog gc = Database.getCatalog();
-                int table_id = pid.getTableId();
-                DbFile file = gc.getDbFile(table_id);
-                buffer_pool.put(pid, file.readPage(pid));
-                return buffer_pool.get(pid);
-            } else {
-                throw new DbException("buffer pool is full");
             }
+            if(buffer_pool.size() >= max_pages) {
+                evictPage();
+            }
+            Catalog gc = Database.getCatalog();
+            int table_id = pid.getTableId();
+            DbFile file = gc.getDbFile(table_id);
+            buffer_pool.put(pid, file.readPage(pid));
+            lru_queue.add(pid);
+            return buffer_pool.get(pid);
         }
 
     /**
@@ -169,7 +177,9 @@ public class BufferPool {
      */
     public synchronized void flushAllPages() throws IOException {
         // some code goes here
-        // not necessary for proj1
+        for(PageId pid : buffer_pool.keySet()) {
+            flushPage(pid);
+        }
 
     }
 
@@ -189,7 +199,12 @@ public class BufferPool {
      */
     private synchronized  void flushPage(PageId pid) throws IOException {
         // some code goes here
-        // not necessary for proj1
+        Catalog gc = Database.getCatalog();
+        int table_id = pid.getTableId();
+        DbFile file = gc.getDbFile(table_id);
+        Page p = buffer_pool.get(pid);
+        file.writePage(p);
+        p.markDirty(false, null);
     }
 
     /** Write all pages of the specified transaction to disk.
@@ -206,6 +221,16 @@ public class BufferPool {
     private synchronized  void evictPage() throws DbException {
         // some code goes here
         // not necessary for proj1
+        PageId pid = lru_queue.remove(0);
+        Page p = buffer_pool.remove(pid);
+        TransactionId dirty = p.isDirty();
+        if(dirty != null) {
+            try {
+                flushPage(pid);
+            } catch(IOException e) {
+                throw new DbException("error flushing dirty page");
+            }
+        }
     }
 
 }
