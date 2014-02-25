@@ -7,6 +7,10 @@ package simpledb;
 public class Delete extends Operator {
 
     private static final long serialVersionUID = 1L;
+    private TransactionId tid;
+    private DbIterator child;
+    private boolean called;
+    private TupleDesc td;
 
     /**
      * Constructor specifying the transaction that this delete belongs to as
@@ -19,23 +23,33 @@ public class Delete extends Operator {
      */
     public Delete(TransactionId t, DbIterator child) {
         // some code goes here
+        tid = t;
+        this.child = child;
+        called = false;
+        td = new TupleDesc(new Type[] { Type.INT_TYPE });
     }
 
     public TupleDesc getTupleDesc() {
         // some code goes here
-        return null;
+        return td;
     }
 
     public void open() throws DbException, TransactionAbortedException {
         // some code goes here
+        child.open();
+        super.open();
     }
 
     public void close() {
         // some code goes here
+        child.close();
+        super.close();
     }
 
     public void rewind() throws DbException, TransactionAbortedException {
         // some code goes here
+        child.rewind();
+        called = false;
     }
 
     /**
@@ -49,18 +63,33 @@ public class Delete extends Operator {
      */
     protected Tuple fetchNext() throws TransactionAbortedException, DbException {
         // some code goes here
+        if(!called) {
+            called = true;
+            Tuple t = null, next = null;
+            int count = 0;
+            BufferPool bp = Database.getBufferPool();
+            while(child.hasNext()) {
+                next = child.next();
+                bp.deleteTuple(tid, next);
+                count++;
+            }
+            t = new Tuple(getTupleDesc());
+            t.setField(0, new IntField(count));
+            return t;
+        }
         return null;
     }
 
     @Override
     public DbIterator[] getChildren() {
         // some code goes here
-        return null;
+        return new DbIterator[] { child };
     }
 
     @Override
     public void setChildren(DbIterator[] children) {
         // some code goes here
+        child = children[0];
     }
 
 }

@@ -45,8 +45,20 @@ public class HeapFileIterator implements DbFileIterator {
         }
     public boolean hasNext()
         throws DbException, TransactionAbortedException {
-            return i != null && 
-                   (i.hasNext() || page_no < file.numPages()-1);
+            if(i == null) { return false; }
+            if(i.hasNext()) { return true; }
+            PageId pid = null;
+            HeapPage page = null;
+
+            //scan subsequent pages for a next tuple
+            for(int j = page_no+1; j < file.numPages(); j++) {
+                pid = new HeapPageId(file.getId(), j);
+                page = (HeapPage) buffer_pool.getPage(tid, pid, Permissions.READ_ONLY);
+                if(page.getNumEmptySlots() != page.numSlots) {
+                    return true;
+                }
+            }
+            return false;
         }
     public Tuple next()
         throws DbException, TransactionAbortedException, NoSuchElementException {
@@ -62,6 +74,7 @@ public class HeapFileIterator implements DbFileIterator {
                 setPageIterator();
                 if(i.hasNext()) { return i.next(); }
             }
+            if(i.hasNext()) { return i.next(); }
             throw new NoSuchElementException("no more tuples in file");
         }
     public void rewind()

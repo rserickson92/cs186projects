@@ -4,36 +4,34 @@ import java.util.*;
 
 class HeapPageIterator implements Iterator<Tuple> {
     /** An iterator specifically for iterating through Tuples on
-     *  a heap page.
+     *  a heap page. Accesses package-protected fields in HeapPages.
      */
 
     private HeapPage page;
     private int slot_i;
+    private Iterator<Tuple> tuples;
 
     public HeapPageIterator(HeapPage page) {
         this.page = page;
-        slot_i = 0;
+        Tuple t;
+        ArrayList<Tuple> l = new ArrayList<Tuple>();
+        for(int i = 0; i < page.numSlots; i++) {
+            if(page.isSlotUsed(i)) {
+                l.add(page.tuples[i]);
+            }
+        }
+        tuples = l.iterator();
     }
 
     public boolean hasNext() {
-        for(int i = slot_i; i < page.numSlots; i++) {
-            if(page.isSlotUsed(i)) {
-                return true;
-            }
-        }
-        return false;
+        return tuples.hasNext();
     }
 
     public Tuple next() {
-        if(!hasNext()) {
+        if(!tuples.hasNext()) {
             throw new NoSuchElementException("no more tuples left");
         }
-        while(!page.isSlotUsed(slot_i)) {
-            slot_i++;
-        }
-        int i = slot_i;
-        slot_i++;
-        return page.tuples[i];
+        return tuples.next();
     }
 
     public void remove() {

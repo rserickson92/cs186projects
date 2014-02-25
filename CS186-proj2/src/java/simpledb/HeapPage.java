@@ -306,11 +306,9 @@ public class HeapPage implements Page {
     }
 
     private void setHeaderBit(int i, byte value) {
-        //System.err.println("setting bit "+i+" to "+value+": ");
         byte mask = (byte) ~(1 << (i%8)),
              setting_bit = ((byte)(value << (i%8)));
         header[i/8] = (byte) ((header[i/8] & mask) | setting_bit);
-        //System.err.println(Arrays.toString(header));
     }
 
     /**
