@@ -1,0 +1,37 @@
+Design decisions:
+-I stuck with a naive nested loop join in Join.
+-My implementations of IntegerAggregator and StringAggregator are almost the 
+ same, except StringAggregator can only do counting. This involved a lot of 
+ code repitition, but I did not create a general Aggregator class to fix this 
+ due to lack of time.
+-I chose to keep my original implementation of getNumEmptySlots() in HeapPage
+ because I did not want to risk introducing any more bugs. It iterates through
+ the entire header each time it is called. Additionally, I inserted tuples in a
+ first-fit manner in both HeapPage and HeapFile.
+-In HeapFile, I moved random access file creation into the constructor for
+ (marginal) performance benefits and so that numPages() could work properly.
+-I implemented the LRU page eviction policy by treating an ArrayList like a 
+ queue. I did this by appending PageIds to the list whenever new pages were
+ read into the buffer pool and removing from the front whenever an eviction
+ occurred. Additionally, if there was a "cache hit" in the buffer pool, I 
+ removed the respective PageId from the list and re-insert it at the back.
+
+API changes: 
+-I did not modify the API.
+
+Missing/incomplete elements: 
+-In general, I feel like the performance of this whole thing needs improvement.
+ A significant factor in this project's slowness is the nested loop join;
+ however, there are several other areas I feel are naively implemented
+ (e.g. getNumEmptySlots()).
+-I feel I did a better job testing my project this time, but there came a point
+ where I had to choose between using more slip hours and finding subtle bugs.
+
+Time spent: 
+-I estimate I spent around 25 hours on this project.
+-I found the nested loop join somewhat confusing because I took the
+ description too literally and had two while loops during my first attempt
+ to implement it.
+-One of my biggest challenges was dealing with bugs that propagated up from
+ the previous project. Luckily there (seemingly) weren't many, but it did 
+ cost me a few precious hours.
