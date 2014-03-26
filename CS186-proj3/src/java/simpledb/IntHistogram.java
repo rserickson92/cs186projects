@@ -4,6 +4,11 @@ package simpledb;
  */
 public class IntHistogram {
 
+    private int min;
+    private int max;
+    private int range;
+    private int ntups;
+    private int[] hist;
     /**
      * Create a new IntHistogram.
      * 
@@ -21,7 +26,12 @@ public class IntHistogram {
      * @param max The maximum integer value that will ever be passed to this class for histogramming
      */
     public IntHistogram(int buckets, int min, int max) {
-    	// some code goes here
+    	  // some code goes here
+        hist = new int[buckets];
+        this.min = min;
+        this.max = max;
+        range = (int) Math.ceil((max - min + 1) / ((double) buckets));
+        this.ntups = 0;
     }
 
     /**
@@ -30,6 +40,9 @@ public class IntHistogram {
      */
     public void addValue(int v) {
     	// some code goes here
+      if(v < min || v > max) { return; }
+      hist[(v - min) / range]++;
+      ntups++;
     }
 
     /**
@@ -45,7 +58,45 @@ public class IntHistogram {
     public double estimateSelectivity(Predicate.Op op, int v) {
 
     	// some code goes here
-        return -1.0;
+        boolean has_eq = op == Predicate.Op.EQUALS ||
+                         op == Predicate.Op.GREATER_THAN_OR_EQ ||
+                         op == Predicate.Op.LESS_THAN_OR_EQ ||
+                         op == Predicate.Op.LIKE,
+                has_lt = op == Predicate.Op.LESS_THAN_OR_EQ ||
+                         op == Predicate.Op.LESS_THAN,
+                has_gt = op == Predicate.Op.GREATER_THAN_OR_EQ ||
+                         op == Predicate.Op.GREATER_THAN,
+                neq    = op == Predicate.Op.NOT_EQUALS;
+        
+        //special cases for values outside of the interval [min, max]
+        if(v < min) { return has_gt || neq ? 1.0 : 0.0; }
+        if(v > max) { return has_lt || neq ? 1.0 : 0.0; }
+
+        int bucket = (v - min) / range;
+        int h = hist[bucket],
+            w = range,
+            b_left = min + bucket*range,
+            b_right = min + (bucket+1)*range - 1;
+        double sel = 0.0;
+        if(neq) {
+            return 1.0 - ((double)h) / w / ntups;
+        }
+        if(has_eq) {
+            sel += ((double)h) / w / ntups;
+        } 
+        if(has_gt) {
+            sel += h * (b_right - v) / ((double) w) / ntups;
+            for(int i = bucket+1; i < hist.length; i++) {
+                sel += hist[i] / ((double) ntups);
+            }
+        } 
+        if(has_lt) {
+            sel += h * (b_left + v) / ((double) w) / ntups;
+            for(int i = bucket-1; i >= 0; i--) {
+                sel += hist[i] / ((double) ntups);
+            }
+        }
+        return sel;
     }
     
     /**
@@ -59,7 +110,22 @@ public class IntHistogram {
     public double avgSelectivity()
     {
         // some code goes here
-        return 1.0;
+        Predicate.Op[] ops = new Predicate.Op[] {Predicate.Op.EQUALS, 
+                                                 Predicate.Op.GREATER_THAN, 
+                                                 Predicate.Op.LESS_THAN, 
+                                                 Predicate.Op.LESS_THAN_OR_EQ, 
+                                                 Predicate.Op.GREATER_THAN_OR_EQ, 
+                                                 Predicate.Op.LIKE, 
+                                                 Predicate.Op.NOT_EQUALS};
+        int n = 0;
+        double total = 0.0;
+        for(Predicate.Op op : ops) {
+            for(int i = min; i <= max; i++) {
+                total += estimateSelectivity(op, i);
+                n++;
+            }
+        }
+        return total / n;
     }
     
     /**
@@ -68,6 +134,16 @@ public class IntHistogram {
     public String toString() {
 
         // some code goes here
-        return null;
+        StringBuffer str = new StringBuffer();
+        for(int i = 0; i < hist.length; i++) {
+            str.append((min+i*range) + "," + (min+(i+1)*range-1) + ": ");
+            for(int j = 0; j < hist[i]; j++) {
+                str.append("=");
+            }
+            str.append("|\n");
+        }
+        str.append("width: ");
+        str.append(range);
+        return str.toString();
     }
 }
