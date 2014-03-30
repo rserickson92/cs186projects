@@ -74,8 +74,10 @@ public class Join extends Operator {
         // some code goes here
         child1.open();
         child2.open();
-        t1 = child1.next();
-        t2 = child2.next();
+        if(child1.hasNext() && child2.hasNext()) {
+            t1 = child1.next();
+            t2 = child2.next();
+        }
         super.open();
     }
 
@@ -91,8 +93,10 @@ public class Join extends Operator {
         // some code goes here
         child1.rewind();
         child2.rewind();
-        t1 = child1.next();
-        t2 = child2.next();
+        if(child1.hasNext() && child2.hasNext()) {
+            t1 = child1.next();
+            t2 = child2.next();
+        }
     }
 
     /**

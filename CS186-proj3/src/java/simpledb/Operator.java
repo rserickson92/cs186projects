@@ -25,7 +25,7 @@ public abstract class Operator implements DbIterator {
         if (next == null) {
             next = fetchNext();
             if (next == null)
-                throw new NoSuchElementException();
+                throw new NoSuchElementException("No more tuples to operate on");
         }
 
         Tuple result = next;

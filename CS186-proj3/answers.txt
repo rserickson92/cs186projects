@@ -1,4 +1,16 @@
 Q1:
+-simpledb.Parser.handleQueryStatement()
+ First, this method constructs a logical plan for the query. This procedure
+ involves going through the FROM clause to determine what tables need to be
+ scanned, then parsing the WHERE clause for filter/join nodes, then parsing
+ the rest (e.g. group by/order by, select, etc...). This plan yields a 
+ physical plan.
+-simpledb.LogicalPlan.physicalPlan()
+ This method starts by creating scans from the logical plan and estimating
+ selectivities from the WHERE clause. This information is used to create
+ statistics for the JoinOptimizer to use to order the joins. These joins
+ are then added to the plan and checked for validity. Lastly, the SELECT
+ list is checked for what fields to display.
 
 Q6:
 
@@ -10,3 +22,4 @@ API changes:
 Missing/incomplete elements: 
 
 Time spent: 
+I spent around 10 hours on this project.

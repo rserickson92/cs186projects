@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashSet;
 
 /**
  * TableStats represents statistics (e.g., histograms) about base tables in a
@@ -12,6 +13,15 @@ import java.util.concurrent.ConcurrentHashMap;
  * This class is not needed in implementing proj1 and proj2.
  */
 public class TableStats {
+
+    private HashSet<PageId> pid_set = new HashSet<PageId>();
+    private int page_io_cost;
+    private Object[] histograms;
+    private int[] mins;
+    private int[] maxes;
+    private int tuple_count = 0;
+    private String[] str_fields;
+    private TupleDesc td;
 
     private static final ConcurrentHashMap<String, TableStats> statsMap = new ConcurrentHashMap<String, TableStats>();
 
@@ -85,6 +95,85 @@ public class TableStats {
         // necessarily have to (for example) do everything
         // in a single scan of the table.
         // some code goes here
+        page_io_cost = ioCostPerPage;
+        DbFile table = Database.getCatalog().getDbFile(tableid);
+        DbFileIterator i = table.iterator(new TransactionId());
+        td = table.getTupleDesc();
+        int td_len = td.numFields();
+        mins = new int[td_len];
+        maxes = new int[td_len];
+        str_fields = new String[td_len];
+        for(int k = 0; k < td_len; k++) {
+            mins[k] = Integer.MAX_VALUE;
+            maxes[k] = Integer.MIN_VALUE;
+        }
+        histograms = new Object[td_len];
+
+        //placeholder variables
+        Tuple t = null;
+        PageId pid = null;
+        Field f = null;
+        Type type = null;
+
+        //compute min/max values, set pageID for scan cost estimation, count tuples
+        try {
+        i.open();
+        while(i.hasNext()) {
+            t = i.next();
+            for(int k = 0; k < td_len; k++) {
+                f = t.getField(k);
+                type = td.getFieldType(k);
+                if(f != null && type == Type.INT_TYPE) {
+                    mins[k] = Math.min(mins[k], ((IntField) f).getValue());
+                    maxes[k] = Math.max(maxes[k], ((IntField) f).getValue());
+                } else {
+                    str_fields[k] = ((StringField) f).getValue();
+                }
+            }
+            pid = t.getRecordId().getPageId();
+            pid_set.add(pid);
+            tuple_count++;
+        }
+
+        //initialize histograms
+        for(int k = 0; k < td_len; k++) {
+            type = td.getFieldType(k);
+            if(type == Type.INT_TYPE) {
+                histograms[k] = new IntHistogram(NUM_HIST_BINS, mins[k], maxes[k]);
+            } else if(type == Type.STRING_TYPE) {
+                histograms[k] = new StringHistogram(NUM_HIST_BINS);
+            } else {
+                throw new RuntimeException("Unknown field type found!");
+            }
+        }
+
+        i.rewind();
+        while(i.hasNext()) {
+            t = i.next();
+            for(int k = 0; k < td_len; k++) {
+                type = td.getFieldType(k);
+                f = t.getField(k);
+                if(f != null) {
+                    if(type == Type.INT_TYPE) {
+                        ((IntHistogram) histograms[k])
+                        .addValue(((IntField) f).getValue());
+                    } else if(type == Type.STRING_TYPE) {
+                        ((StringHistogram) histograms[k])
+                        .addValue(((StringField) f).getValue());
+                    } else {
+                        throw new RuntimeException("Unknown field type found!");
+                    }
+                }
+            }
+        }
+        } catch(DbException e) {
+            System.err.println("See TableStats()");
+            e.printStackTrace();
+        } catch(TransactionAbortedException e) {
+            System.err.println("See TableStats()");
+            e.printStackTrace();
+        }
+        i.close();
     }
 
     /**
@@ -101,7 +190,7 @@ public class TableStats {
      */
     public double estimateScanCost() {
         // some code goes here
-        return 0;
+        return page_io_cost * pid_set.size();
     }
 
     /**
@@ -115,7 +204,7 @@ public class TableStats {
      */
     public int estimateTableCardinality(double selectivityFactor) {
         // some code goes here
-        return 0;
+        return (int) (selectivityFactor * tuple_count);
     }
 
     /**
@@ -130,7 +219,19 @@ public class TableStats {
      * */
     public double avgSelectivity(int field, Predicate.Op op) {
         // some code goes here
-        return 1.0;
+        double total = 0.0;
+        int n = 0;
+        Type type = td.getFieldType(field);
+        for(int i = mins[field]; i <= maxes[field]; i++) {
+            if(type == Type.INT_TYPE) {
+              total += estimateSelectivity(field, op, new IntField(i));
+            } else {
+              total += estimateSelectivity(field, op, 
+                       new StringField(str_fields[i], str_fields[i].length()));
+            }
+            n++;
+        }
+        return total / n;
     }
 
     /**
@@ -148,7 +249,16 @@ public class TableStats {
      */
     public double estimateSelectivity(int field, Predicate.Op op, Field constant) {
         // some code goes here
-        return 1.0;
+        Type type = td.getFieldType(field);
+        if(type == Type.INT_TYPE) {
+            return ((IntHistogram) histograms[field])
+                   .estimateSelectivity(op, ((IntField) constant).getValue());
+        } else if(type == Type.STRING_TYPE) {
+            return ((StringHistogram) histograms[field])
+                   .estimateSelectivity(op, ((StringField) constant).getValue());
+        } else {
+            throw new RuntimeException("Unknown field type found!");
+        }
     }
 
     /**
@@ -156,7 +266,7 @@ public class TableStats {
      * */
     public int totalTuples() {
         // some code goes here
-        return 0;
+        return tuple_count;
     }
 
 }

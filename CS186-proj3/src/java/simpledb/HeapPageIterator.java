@@ -35,6 +35,6 @@ class HeapPageIterator implements Iterator<Tuple> {
     }
 
     public void remove() {
-        throw new UnsupportedOperationException();
+        throw new UnsupportedOperationException("remove is not supported on HeapPageIterators.");
     }
 }

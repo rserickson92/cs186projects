@@ -111,7 +111,7 @@ public class JoinOptimizer {
             // HINT: You may need to use the variable "j" if you implemented
             // a join algorithm that's more complicated than a basic nested-loops
             // join.
-            return -1.0;
+            return cost1 + card1 * cost2 + card1 * card2;
         }
     }
 
@@ -156,6 +156,21 @@ public class JoinOptimizer {
             Map<String, Integer> tableAliasToId) {
         int card = 1;
         // some code goes here
+        if(joinOp == Predicate.Op.EQUALS || 
+           joinOp == Predicate.Op.LIKE ||
+           joinOp == Predicate.Op.NOT_EQUALS) {
+            if(!(t1pkey || t2pkey)) {
+                card = Math.max(card1, card2);
+            } else if(t1pkey && !t2pkey) {
+                card = card2;
+            } else if(t2pkey && !t1pkey) {
+                card = card1;
+            } else {
+                card = Math.min(card1, card2);
+            }
+        } else { //range scan
+            card = (int) (0.3 * card1 * card2);
+        }
         return card <= 0 ? 1 : card;
     }
 
@@ -217,12 +232,36 @@ public class JoinOptimizer {
             HashMap<String, Double> filterSelectivities, boolean explain)
             throws ParsingException {
 
-        // See the project writeup for some hints as to how this function
-        // should work.
-
         // some code goes here
-        //Replace the following
-        return joins;
+        double best_cost = Double.MAX_VALUE;
+        int card = 0;
+        PlanCache cache = new PlanCache();
+        CostCard cc = null;
+        Vector<LogicalJoinNode> best_plan = null;
+        Set<LogicalJoinNode> s = null;
+        for(int i = 1; i <= joins.size(); i++) {
+            for(Set<LogicalJoinNode> set : enumerateSubsets(joins, i)) {
+                best_plan = new Vector<LogicalJoinNode>();
+                best_cost = Double.MAX_VALUE;
+                for(LogicalJoinNode join_to_remove : set) {
+                    cc = computeCostAndCardOfSubplan(stats, 
+                                                     filterSelectivities,
+                                                     join_to_remove,
+                                                     set,
+                                                     best_cost,
+                                                     cache);
+                    if(cc != null) {
+                        best_cost = cc.cost;
+                        best_plan = cc.plan;
+                        card = cc.card;
+                    }
+                }
+                cache.addPlan(set, best_cost, card, best_plan);
+                s = set;
+            }
+        }
+        if(explain) { printJoins(joins, cache, stats, filterSelectivities); }
+        return cache.getOrder(s) == null ? joins : cache.getOrder(s);
     }
 
     // ===================== Private Methods =================================

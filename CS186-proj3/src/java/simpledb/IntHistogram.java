@@ -56,7 +56,6 @@ public class IntHistogram {
      * @return Predicted selectivity of this particular operator and value
      */
     public double estimateSelectivity(Predicate.Op op, int v) {
-
     	// some code goes here
         boolean has_eq = op == Predicate.Op.EQUALS ||
                          op == Predicate.Op.GREATER_THAN_OR_EQ ||
@@ -82,21 +81,22 @@ public class IntHistogram {
             return 1.0 - ((double)h) / w / ntups;
         }
         if(has_eq) {
-            sel += ((double)h) / w / ntups;
+            sel += ((double)h) / w;
         } 
         if(has_gt) {
-            sel += h * (b_right - v) / ((double) w) / ntups;
+            sel += h * (b_right - v) / ((double) w);
             for(int i = bucket+1; i < hist.length; i++) {
-                sel += hist[i] / ((double) ntups);
+                sel += hist[i];
             }
         } 
         if(has_lt) {
-            sel += h * (b_left + v) / ((double) w) / ntups;
+            sel += (b_left != v) ? (h * (b_left + v) / ((double) w))
+                                 : 0.0;
             for(int i = bucket-1; i >= 0; i--) {
-                sel += hist[i] / ((double) ntups);
+                sel += hist[i];
             }
         }
-        return sel;
+        return sel / ((double)ntups);
     }
     
     /**
@@ -134,13 +134,14 @@ public class IntHistogram {
     public String toString() {
 
         // some code goes here
+        int j = 0;
         StringBuffer str = new StringBuffer();
         for(int i = 0; i < hist.length; i++) {
             str.append((min+i*range) + "," + (min+(i+1)*range-1) + ": ");
-            for(int j = 0; j < hist[i]; j++) {
+            for(j = 0; j < hist[i]; j++) {
                 str.append("=");
             }
-            str.append("|\n");
+            str.append("|"+j+"\n");
         }
         str.append("width: ");
         str.append(range);
