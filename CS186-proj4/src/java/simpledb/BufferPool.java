@@ -12,6 +12,72 @@ import java.util.*;
  * a page, BufferPool checks that the transaction has the appropriate
  * locks to read/write the page.
  */
+
+/**
+ * Locks manages all data regarding locks. Given a page ID, it can return all
+ * locks on the page. Given a transaction ID, it can return all locks owned by
+ * the transaction.
+ */
+class Locks {
+    private enum LockType { S, X }
+    private HashMap<TransactionId, HashMap<PageId, LockType>> transaction_locks = 
+        new HashMap<TransactionId, HashMap<PageId, LockType>>();
+    private HashMap<PageId, HashMap<TransactionId, LockType>> page_locks =
+        new HashMap<PageId, HashMap<TransactionId, LockType>>();
+
+    private void addLock(PageId pid, TransactionId tid, LockType type) {
+        page_locks.get(pid);
+        HashMap<TransactionId, LockType> locks_by_tid = page_locks.get(pid);
+        if(locks_by_tid != null) {
+            locks_by_tid.put(tid, type);
+        } else {
+            locks_by_tid = new HashMap<TransactionId, LockType>();
+            locks_by_tid.put(tid, type);
+            page_locks.put(pid, locks_by_tid);
+        }
+
+        transaction_locks.get(tid);
+        HashMap<PageId, LockType> locks_by_pid = transaction_locks.get(tid);
+        if(locks_by_pid != null) {
+            locks_by_pid.put(pid, type);
+        } else {
+            locks_by_pid = new HashMap<PageId, LockType>();
+            locks_by_pid.put(pid, type);
+            transaction_locks.put(tid, locks_by_pid);
+        }
+    }
+    /**
+     * Attempts to acquire a shared lock on a page.
+     *
+     * @param pid the page ID the lock will be acquired on
+     * @param tid the transaction ID attempting to acquire the lock
+     * @return true if the attempt was successful, false if not
+     */
+    public boolean addSharedLock(PageId pid, TransactionId tid) {
+        if(hasExclusiveLock(page_locks.get(pid))) { return false; }
+        addLock(pid, tid, LockType.S);
+        return true;
+    }
+    private boolean hasExclusiveLock(HashMap<TransactionId, LockType> locks) {
+        return locks != null && locks.values() != null && 
+               locks.values().contains(LockType.X);
+    }
+    public boolean addExclusiveLock(PageId pid, TransactionId tid) { return false; }
+    public void unlock(PageId pid, TransactionId tid) { 
+        HashMap<TransactionId, LockType> locks_by_tid = page_locks.get(pid);
+        HashMap<PageId, LockType> locks_by_pid = transaction_locks.get(tid);
+        if(locks_by_tid != null && locks_by_pid != null) {
+            locks_by_tid.remove(tid);
+            locks_by_pid.remove(pid);
+        }
+    }
+    public boolean locked(PageId pid, TransactionId tid) { return false; }
+    public boolean locked(TransactionId tid, PageId pid) {
+        HashMap<PageId, LockType> locks_by_pid = transaction_locks.get(tid);
+        return locks_by_pid != null && !locks_by_pid.isEmpty();
+    }
+}
+
 public class BufferPool {
     /** Bytes per page, including header. */
     public static final int PAGE_SIZE = 4096;
@@ -22,6 +88,7 @@ public class BufferPool {
     public static final int DEFAULT_PAGES = 50;
 
     private HashMap<PageId, Page> buffer_pool;
+    private Locks locks;
     private int max_pages;
     private ArrayList<PageId> lru_queue;
     /**
@@ -34,6 +101,7 @@ public class BufferPool {
         max_pages = numPages;
         buffer_pool = new HashMap<PageId, Page>(max_pages);
         lru_queue = new ArrayList<PageId>(max_pages);
+        locks = new Locks();
     }
 
     /**
@@ -51,27 +119,34 @@ public class BufferPool {
      * @param pid the ID of the requested page
      * @param perm the requested permissions on the page
      */
-    public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
+    public Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
             // some code goes here
-            if(buffer_pool.containsKey(pid)) {
-
-                //move this (MRU) page to back of queue
-                lru_queue.remove(lru_queue.indexOf(pid));
-                lru_queue.add(pid);
-
-                return buffer_pool.get(pid);
+        try {
+            while(!locks.addSharedLock(pid, tid)) { //block
+                Thread.sleep(100);
             }
-            if(buffer_pool.size() >= max_pages) {
-                evictPage();
-            }
-            Catalog gc = Database.getCatalog();
-            int table_id = pid.getTableId();
-            DbFile file = gc.getDbFile(table_id);
-            buffer_pool.put(pid, file.readPage(pid));
+        } catch(InterruptedException e) {
+            throw new DbException("interruption in getPage()");
+        }
+        if(buffer_pool.containsKey(pid)) {
+
+            //move this (MRU) page to back of queue
+            lru_queue.remove(lru_queue.indexOf(pid));
             lru_queue.add(pid);
+
             return buffer_pool.get(pid);
         }
+        if(buffer_pool.size() >= max_pages) {
+            evictPage();
+        }
+        Catalog gc = Database.getCatalog();
+        int table_id = pid.getTableId();
+        DbFile file = gc.getDbFile(table_id);
+        buffer_pool.put(pid, file.readPage(pid));
+        lru_queue.add(pid);
+        return buffer_pool.get(pid);
+    }
 
     /**
      * Releases the lock on a page.
@@ -85,6 +160,7 @@ public class BufferPool {
     public  void releasePage(TransactionId tid, PageId pid) {
         // some code goes here
         // not necessary for proj1
+        locks.unlock(pid, tid);
     }
 
     /**
@@ -101,7 +177,7 @@ public class BufferPool {
     public boolean holdsLock(TransactionId tid, PageId p) {
         // some code goes here
         // not necessary for proj1
-        return false;
+        return locks.locked(tid, p);
     }
 
     /**
