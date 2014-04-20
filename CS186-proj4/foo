@@ -1,0 +1,8 @@
+Buildfile: /home/ubuntu/projects/CS186-proj3/build.xml
+
+compile:
+    [javac] Compiling 1 source file to /home/ubuntu/projects/CS186-proj3/bin/src
+
+testcompile:
+
+runtest:

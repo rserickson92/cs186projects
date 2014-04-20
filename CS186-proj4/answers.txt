@@ -1,0 +1,101 @@
+Q1:
+-simpledb.Parser.handleQueryStatement()
+ First, this method constructs a logical plan for the query. This procedure
+ involves going through the FROM clause to determine what tables need to be
+ scanned, then parsing the WHERE clause for filter/join nodes, then parsing
+ the rest (e.g. group by/order by, select, etc...). This plan yields a 
+ physical plan.
+-simpledb.LogicalPlan.physicalPlan()
+ This method starts by creating scans from the logical plan and estimating
+ selectivities from the WHERE clause. This information is used to create
+ statistics for the JoinOptimizer to use to order the joins. These joins
+ are then added to the plan and checked for validity. Lastly, the SELECT
+ list is checked for what fields to display.
+
+Q6.1: (I used the 1% dataset)
+select d.fname, d.lname
+from Actor a, Casts c, Movie_Director m, Director d
+where a.id=c.pid and c.mid=m.mid and m.did=d.id 
+and a.fname='John' and a.lname='Spicer';
+
+The query plan is:
+                              π(d.fname,d.lname),card:1
+                              |
+                              ⨝(a.id=c.pid),card:1
+    __________________________|___________________________
+    |                                                    |
+    σ(a.lname=Spicer),card:1                             ⨝(m.mid=c.mid),card:29729
+    |                                    ________________|_________________
+    σ(a.fname=John),card:1               |                                |
+    |                                    ⨝(d.id=m.did),card:2791          |
+    |                           _________|_________                       |
+    |                           |                 |                     scan(Casts c)
+    scan(Actor a)               scan(Director d)  scan(Movie_Director m)
+
+d.fname d.lname 
+------------------------
+-The join between Director d and Movie_Director m was first because the
+ Selinger algorithm determined that they were the cheapest two tables to join 
+ out of all possible combinations.
+-Casts was joined into d/m next because it was the last table left. The Actor
+ table a is trivial in this case since the WHERE clause made it have a
+ cardinality of zero.
+-The left table of the join was always the one with higher estimated cardinality.
+
+Q6.2: (I used the 0.1% dataset)
+select a.fname, a.lname, g.genre 
+from Actor a, Casts c, Movie m, Genre g 
+where a.id=c.pid and c.mid=m.id and g.mid=c.mid;
+
+The query plan is:
+                                  π(a.fname,a.lname,g.genre),card:421
+                                  |
+                                  ⨝(c.mid=g.mid),card:421
+                    ______________|_______________
+                    |                            |
+                    ⨝(c.pid=a.id),card:2898      |
+       _____________|______________              |
+       |                          |              |
+       ⨝(m.id=c.mid),card:3008    |              |
+_______|________                  |              |
+|              |                scan(Actor a)    |
+scan(Movie m)  scan(Casts c)                     scan(Genre g)
+
+a.fname a.lname g.genre 
+------------------------------------
+-Movie m and Casts c were joined first because they were the cheapest possible
+ join out of all possible binary base-table joins.
+-Actor a was joined into m/c next since it was cheaper than joining in Genre g.
+-Genre g was the last remaining table, so it was joined in last.
+-The left table of the join was always the one with higher estimated cardinality.
+
+Design decisions:
+-In IntHistogram, I used integer ranges for the buckets as opposed to floating
+ point ranges to make my  code simpler. I handled the edge case of having a
+ LESS_THAN operator on a bucket's left endpoint by ignoring that bucket 
+ entirely.
+-In the TableStats constructor, I used three separate arrays to keep track of 
+ min/max values and string_fields as opposed to a single Object array because
+ I felt that would have made my code more complicated and therefore could have
+ lead to hard-to-handle bugs.
+-In TableStats, I used a HashSet solely to keep track of the number of unique
+ page ids for simpler code.
+-In JoinOptimizer.estimateTableJoinCardinality, I used a minimalist approach
+ for estimating join cardinality. I used a fix calculation for range queries,
+ and my equality joins returned one of the table's cardinalities based on 
+ how many primary keys were involved.
+API changes: 
+-I did not modify the API.
+
+Missing/incomplete elements: 
+-To the best of my knowledge, there is nothing significant that is missing or
+ incomplete.
+-Though it is passing the tests, I feel that the estimation for join 
+ cardinality is overly simple and could lead to significantly suboptimal
+ joins.
+
+Time spent: 
+-I spent around 10 hours on this project.
+-I found the second part of question 4 very confusing since the function we
+ were required to write took 11 parameters and I only ended up needing a few
+ of them. Otherwise my tasks on this project seemed clear.
