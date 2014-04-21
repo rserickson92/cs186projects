@@ -132,12 +132,15 @@ public class HeapFile implements DbFile {
             HeapPage p = null;
             for(i = 0; i < numPages(); i++) {
                 pid = new HeapPageId(id, i);
-                p = (HeapPage) bp.getPage(tid, pid, Permissions.READ_WRITE);
+                p = (HeapPage) bp.getPage(tid, pid, Permissions.READ_ONLY);
                 slots = p.getNumEmptySlots();
                 if(slots > 0) {
+                    p = (HeapPage) bp.getPage(tid, pid, Permissions.READ_WRITE);
                     p.insertTuple(t);
                     retlist.add(p);
                     return retlist;
+                } else { //release shared lock
+                    bp.releasePage(tid, pid);
                 }
             }
 
