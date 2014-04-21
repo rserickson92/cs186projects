@@ -4,28 +4,40 @@ import java.io.*;
 import java.util.*;
 
 /**
- * BufferPool manages the reading and writing of pages into memory from
- * disk. Access methods call into it to retrieve pages, and it fetches
- * pages from the appropriate location.
- * <p>
- * The BufferPool is also responsible for locking;  when a transaction fetches
- * a page, BufferPool checks that the transaction has the appropriate
- * locks to read/write the page.
- */
-
-/**
  * Locks manages all data regarding locks. Given a page ID, it can return all
  * locks on the page. Given a transaction ID, it can return all locks owned by
  * the transaction.
  */
 class Locks {
+    class BlockedTransaction {
+        public TransactionId tid;
+        public LockType type;
+        public BlockedTransaction(TransactionId tid, LockType type) {
+            this.tid = tid;
+            this.type = type;
+        }
+        public boolean equals(Object o) {
+            if(!(o instanceof BlockedTransaction)) { return false; }
+            BlockedTransaction bt = (BlockedTransaction) o;
+            return tid.equals(bt.tid) && type == bt.type;
+        }
+    }
     private enum LockType { S, X }
     private HashMap<TransactionId, HashMap<PageId, LockType>> transaction_locks = 
         new HashMap<TransactionId, HashMap<PageId, LockType>>();
     private HashMap<PageId, HashMap<TransactionId, LockType>> page_locks =
         new HashMap<PageId, HashMap<TransactionId, LockType>>();
+    private HashMap<PageId, LinkedList<BlockedTransaction>> blocked_transactions = 
+        new HashMap<PageId, LinkedList<BlockedTransaction>>();
 
-    private synchronized void addLock(PageId pid, TransactionId tid, LockType type) {
+    private void enqueueTransaction(TransactionId tid, PageId pid, LockType type) {
+        BlockedTransaction bt = new BlockedTransaction(tid, type);
+        if(!blocked_transactions.containsKey(pid)) { 
+            blocked_transactions.put(pid, new LinkedList<BlockedTransaction>());
+        }
+        blocked_transactions.get(pid).add(bt);
+    }
+    private void addLock(PageId pid, TransactionId tid, LockType type) {
         HashMap<TransactionId, LockType> locks_by_tid = page_locks.get(pid);
         if(locks_by_tid != null) {
             locks_by_tid.put(tid, type);
@@ -51,9 +63,12 @@ class Locks {
      * @param tid the transaction ID attempting to acquire the lock
      * @return true if the attempt was successful, false if not
      */
-    public synchronized boolean addSharedLock(PageId pid, TransactionId tid) {
+    public boolean addSharedLock(PageId pid, TransactionId tid) {
         HashMap<TransactionId, LockType> locks_by_tid = page_locks.get(pid);
-        if(locks_by_tid != null && locks_by_tid.containsValue(LockType.X)) { return false; }
+        if(locks_by_tid != null && locks_by_tid.containsValue(LockType.X)) { 
+            enqueueTransaction(tid, pid, LockType.S);
+            return false; 
+        }
         addLock(pid, tid, LockType.S);
         return true;
     }
@@ -66,34 +81,60 @@ class Locks {
      * @param tid the transaction ID attempting to acquire the lock
      * @return true if the attempt was successful, false if not
      */
-    public synchronized boolean addExclusiveLock(PageId pid, TransactionId tid) {
+    public boolean addExclusiveLock(PageId pid, TransactionId tid) {
         HashMap<TransactionId, LockType> locks_by_tid = page_locks.get(pid);
 
-        //if there are no locks on this page AND it's not the case that this
+        //if there are locks on this page AND it's not the case that this
         //transaction holds the only lock and it's shared AND this transaction
         //doesn't already have an exclusive lock on the page
         if(locks_by_tid != null && !locks_by_tid.isEmpty() &&
            !(locks_by_tid.size() == 1 && locks_by_tid.get(tid) == LockType.S) &&
            locks_by_tid.get(tid) != LockType.X) {
+            enqueueTransaction(tid, pid, LockType.X);
             return false;
         }
         addLock(pid, tid, LockType.X);
         return true;
     }
-    public synchronized void unlock(PageId pid, TransactionId tid) { 
+    public void unlock(PageId pid, TransactionId tid) { 
         HashMap<TransactionId, LockType> locks_by_tid = page_locks.get(pid);
         HashMap<PageId, LockType> locks_by_pid = transaction_locks.get(tid);
+        BlockedTransaction bt = null;
         if(locks_by_tid != null && locks_by_pid != null) {
             locks_by_tid.remove(tid);
             locks_by_pid.remove(pid);
+            LinkedList<BlockedTransaction> waiting_transactions =
+                blocked_transactions.remove(pid);
+            while(waiting_transactions != null && waiting_transactions.size() > 0) {
+                bt = waiting_transactions.getFirst();
+                attemptToAddLock(pid, bt.tid, bt.type);
+            }
+        }
+
+    }
+    private void attemptToAddLock(PageId pid, TransactionId tid, LockType type) {
+        if(type == LockType.S) {
+            addSharedLock(pid, tid);
+        } else {
+            addExclusiveLock(pid, tid);
         }
     }
-    public synchronized boolean locked(PageId pid, TransactionId tid) { return false; }
-    public synchronized boolean locked(TransactionId tid, PageId pid) {
+    public  boolean locked(PageId pid, TransactionId tid) { return false; }
+    public  boolean locked(TransactionId tid, PageId pid) {
         HashMap<PageId, LockType> locks_by_pid = transaction_locks.get(tid);
         return locks_by_pid != null && locks_by_pid.containsKey(pid);
     }
 }
+
+/**
+ * BufferPool manages the reading and writing of pages into memory from
+ * disk. Access methods call into it to retrieve pages, and it fetches
+ * pages from the appropriate location.
+ * <p>
+ * The BufferPool is also responsible for locking;  when a transaction fetches
+ * a page, BufferPool checks that the transaction has the appropriate
+ * locks to read/write the page.
+ */
 
 public class BufferPool {
     /** Bytes per page, including header. */
@@ -139,13 +180,15 @@ public class BufferPool {
     public Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
             // some code goes here
-        boolean blocking = true;
         try {
-            while(blocking) {
-                Thread.sleep(100);
-                blocking = perm == Permissions.READ_ONLY 
-                           ? !locks.addSharedLock(pid, tid)
-                           : !locks.addExclusiveLock(pid, tid);
+            if(perm == Permissions.READ_ONLY) {
+                while(!locks.addSharedLock(pid, tid)) {
+                    Thread.sleep(100);
+                }
+            } else {
+                while(!locks.addExclusiveLock(pid, tid)) {
+                    Thread.sleep(100);
+                }
             }
         } catch(InterruptedException e) {
             throw new DbException("interruption in getPage()");
