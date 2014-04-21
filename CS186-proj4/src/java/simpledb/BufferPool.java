@@ -52,13 +52,10 @@ class Locks {
      * @return true if the attempt was successful, false if not
      */
     public synchronized boolean addSharedLock(PageId pid, TransactionId tid) {
-        if(hasExclusiveLock(page_locks.get(pid))) { return false; }
+        HashMap<TransactionId, LockType> locks_by_tid = page_locks.get(pid);
+        if(locks_by_tid != null && locks_by_tid.containsValue(LockType.X)) { return false; }
         addLock(pid, tid, LockType.S);
         return true;
-    }
-    private synchronized boolean hasExclusiveLock(HashMap<TransactionId, LockType> locks) {
-        return locks != null && locks.values() != null && 
-               locks.containsValue(LockType.X);
     }
     /**
      * Attempts to acquire an exclusive lock on a page. If the transaction has
