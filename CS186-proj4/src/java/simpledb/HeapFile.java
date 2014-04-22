@@ -100,9 +100,11 @@ public class HeapFile implements DbFile {
         long offset = page.getId().pageNumber() * BufferPool.PAGE_SIZE;
         byte[] data = page.getPageData();
         try {
+            synchronized(raf) {
             raf.seek(offset);
             for(int i = 0; i < data.length; i++) {
                 raf.writeByte(data[i]);
+            }
             }
         } catch(FileNotFoundException e) {
             e.printStackTrace();
@@ -135,6 +137,7 @@ public class HeapFile implements DbFile {
                 p = (HeapPage) bp.getPage(tid, pid, Permissions.READ_WRITE);
                 slots = p.getNumEmptySlots();
                 if(slots > 0) {
+                    //p = (HeapPage) bp.getPage(tid, pid, Permissions.READ_WRITE);
                     p.insertTuple(t);
                     retlist.add(p);
                     return retlist;

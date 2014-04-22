@@ -57,11 +57,16 @@ public class BufferPool {
         throws TransactionAbortedException, DbException {
             // some code goes here
             boolean blocked = true;
-            while(blocked) {
-                blocked = (perm == Permissions.READ_ONLY)
-                        ? (!locks.addSharedLock(pid, tid))
-                        : (!locks.addExclusiveLock(pid, tid));
-            }
+            //try {
+                while(blocked) {
+                    //Thread.sleep(100);
+                    blocked = (perm == Permissions.READ_ONLY)
+                            ? (!locks.addSharedLock(pid, tid))
+                            : (!locks.addExclusiveLock(pid, tid));
+                }
+            //} catch(InterruptedException e) {
+            //    throw new DbException("getPage interrupted");
+            //}
             if(buffer_pool.containsKey(pid)) {
 
                 //move this (MRU) page to back of queue
