@@ -56,8 +56,6 @@ public class HeapFileIterator implements DbFileIterator {
                 page = (HeapPage) buffer_pool.getPage(tid, pid, Permissions.READ_ONLY);
                 if(page.getNumEmptySlots() != page.numSlots) {
                     return true;
-                } else {
-                    buffer_pool.releasePage(tid, pid);
                 }
             }
             return false;

@@ -12,7 +12,6 @@ import java.util.*;
  * a page, BufferPool checks that the transaction has the appropriate
  * locks to read/write the page.
  */
-
 public class BufferPool {
     /** Bytes per page, including header. */
     public static final int PAGE_SIZE = 4096;
@@ -23,9 +22,9 @@ public class BufferPool {
     public static final int DEFAULT_PAGES = 50;
 
     private HashMap<PageId, Page> buffer_pool;
-    private LockManager locks;
     private int max_pages;
     private ArrayList<PageId> lru_queue;
+    private LockManager locks;
     /**
      * Creates a BufferPool that caches up to numPages pages.
      *
@@ -54,41 +53,33 @@ public class BufferPool {
      * @param pid the ID of the requested page
      * @param perm the requested permissions on the page
      */
-    public Page getPage(TransactionId tid, PageId pid, Permissions perm)
+    public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
         throws TransactionAbortedException, DbException {
             // some code goes here
-        try {
-            if(perm == Permissions.READ_ONLY) {
-                while(!locks.addSharedLock(pid, tid)) {
-                    Thread.sleep(100);
-                }
-            } else {
-                while(!locks.addExclusiveLock(pid, tid)) {
-                    Thread.sleep(100);
-                }
+            boolean blocked = true;
+            while(blocked) {
+                blocked = (perm == Permissions.READ_ONLY)
+                        ? (!locks.addSharedLock(pid, tid))
+                        : (!locks.addExclusiveLock(pid, tid));
             }
-        } catch(InterruptedException e) {
-            throw new DbException("interruption in getPage()");
-        }
-         
-        if(buffer_pool.containsKey(pid)) {
+            if(buffer_pool.containsKey(pid)) {
 
-            //move this (MRU) page to back of queue
-            lru_queue.remove(lru_queue.indexOf(pid));
+                //move this (MRU) page to back of queue
+                lru_queue.remove(lru_queue.indexOf(pid));
+                lru_queue.add(pid);
+
+                return buffer_pool.get(pid);
+            }
+            if(buffer_pool.size() >= max_pages) {
+                evictPage();
+            }
+            Catalog gc = Database.getCatalog();
+            int table_id = pid.getTableId();
+            DbFile file = gc.getDbFile(table_id);
+            buffer_pool.put(pid, file.readPage(pid));
             lru_queue.add(pid);
-
             return buffer_pool.get(pid);
         }
-        if(buffer_pool.size() >= max_pages) {
-            evictPage();
-        }
-        Catalog gc = Database.getCatalog();
-        int table_id = pid.getTableId();
-        DbFile file = gc.getDbFile(table_id);
-        buffer_pool.put(pid, file.readPage(pid));
-        lru_queue.add(pid);
-        return buffer_pool.get(pid);
-    }
 
     /**
      * Releases the lock on a page.
@@ -119,7 +110,7 @@ public class BufferPool {
     public boolean holdsLock(TransactionId tid, PageId p) {
         // some code goes here
         // not necessary for proj1
-        return locks.locked(tid, p);
+        return locks.isLocked(p, tid);
     }
 
     /**
